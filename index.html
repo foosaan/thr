@@ -420,7 +420,19 @@
             color: #ff6b6b;
             margin-top: 10px;
             min-height: 20px;
-            transition: opacity 0.3s;
+            opacity: 0;
+            transform: translateY(-4px);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+
+        .pw-error.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .pw-input.error {
+            border-color: rgba(255, 107, 107, 0.6);
+            background: rgba(255, 107, 107, 0.05);
         }
 
         .pw-submit {
@@ -1011,13 +1023,19 @@
 
         function checkPassword() {
             const input = document.getElementById('pwInput').value.trim().toLowerCase();
+            const pwInput = document.getElementById('pwInput');
+            const pwError = document.getElementById('pwError');
+
             if (input === SECRET_PASSWORD) {
                 document.getElementById('pwOverlay').classList.remove('show');
                 revealCard();
             } else {
-                document.getElementById('pwError').textContent = 'Password salah, coba lagi ya~';
-                document.getElementById('pwInput').value = '';
-                document.getElementById('pwInput').focus();
+                pwError.textContent = 'Password salah, coba lagi ya~';
+                pwError.classList.add('show');
+                pwInput.classList.add('error');
+                pwInput.value = '';
+                pwInput.focus();
+
                 // Shake animation
                 const box = document.querySelector('.pw-box');
                 box.style.animation = 'none';
@@ -1025,6 +1043,13 @@
                 box.style.animation = 'shake 0.4s ease';
             }
         }
+
+        // Reset error state when user starts typing
+        document.getElementById('pwInput').addEventListener('input', function () {
+            this.classList.remove('error');
+            const pwError = document.getElementById('pwError');
+            pwError.classList.remove('show');
+        });
 
         // Enter key support
         document.addEventListener('keydown', e => {
