@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Surprise Spesial</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;500;600;700&family=Space+Grotesk:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #060610;
+            --gold: #c9a84c;
+            --gold-light: #e4c86a;
+            --gold-dim: rgba(201, 168, 76, 0.15);
+            --text: #f0ede6;
+            --text-sec: rgba(240, 237, 230, 0.55);
+            --text-muted: rgba(240, 237, 230, 0.25);
+            --border: rgba(201, 168, 76, 0.12);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ===== CANVAS for particles ===== */
+        #particleCanvas {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* ===== BLOOM FLOWERS ===== */
+        .bloom-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 2;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .flower {
+            position: absolute;
+            transform: scale(0);
+            opacity: 0;
+        }
+
+        .flower.blooming {
+            animation: flowerBloom 1.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        .flower.blooming .petal-ring {
+            animation: petalSpin 30s linear infinite;
+        }
+
+        .flower.blooming .petal-ring-inner {
+            animation: petalSpin 25s linear infinite reverse;
+        }
+
+        @keyframes flowerBloom {
+            0% {
+                opacity: 0;
+                transform: scale(0) rotate(-60deg);
+            }
+
+            30% {
+                opacity: 1;
+            }
+
+            70% {
+                transform: scale(1.1) rotate(5deg);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1) rotate(0deg);
+            }
+        }
+
+        @keyframes petalSpin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .petal-ring,
+        .petal-ring-inner {
+            position: absolute;
+            inset: 0;
+        }
+
+        .petal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            border-radius: 50% 0 50% 50%;
+            transform-origin: 0% 0%;
+            opacity: 0;
+            filter: blur(0.3px);
+        }
+
+        .flower.blooming .petal {
+            animation: petalOpen 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes petalOpen {
+            0% {
+                opacity: 0;
+                transform: rotate(var(--a)) scaleY(0);
+            }
+
+            40% {
+                opacity: 0.9;
+            }
+
+            100% {
+                opacity: var(--po, 0.85);
+                transform: rotate(var(--a)) scaleY(1) translateY(calc(var(--d) * -1));
+            }
+        }
+
+        .flower-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            border-radius: 50%;
+            background: radial-gradient(circle, #ffe6a0, #f5c842);
+            z-index: 5;
+        }
+
+        .flower.blooming .flower-center {
+            animation: centerPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.6s forwards;
+        }
+
+        @keyframes centerPop {
+            0% {
+                transform: translate(-50%, -50%) scale(0);
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        /* Flower glow */
+        .flower-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            opacity: 0;
+        }
+
+        .flower.blooming .flower-glow {
+            animation: glowFade 1.5s ease 0.3s forwards, glowPulse 4s ease-in-out 1.5s infinite;
+        }
+
+        @keyframes glowFade {
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes glowPulse {
+
+            0%,
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.7;
+            }
+
+            50% {
+                transform: translate(-50%, -50%) scale(1.3);
+                opacity: 1;
+            }
+        }
+
+        /* ===== SCENES ===== */
+        .scene {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            padding: 20px;
+            transition: all 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .scene.hidden {
+            opacity: 0;
+            pointer-events: none;
+            filter: blur(8px);
+            transform: scale(1.08);
+        }
+
+        /* Intro */
+        .intro-wrap {
+            text-align: center;
+            max-width: 480px;
+            position: relative;
+            z-index: 3;
+        }
+
+        .intro-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.6rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 14px;
+            line-height: 1.25;
+            opacity: 0;
+            animation: introFade 1.2s ease 0.8s forwards;
+            text-shadow: 0 2px 40px rgba(201, 168, 76, 0.15);
+        }
+
+        .intro-sub {
+            font-size: 0.9rem;
+            font-weight: 300;
+            color: var(--text-sec);
+            margin-bottom: 52px;
+            line-height: 1.7;
+            opacity: 0;
+            animation: introFade 1.2s ease 1.2s forwards;
+        }
+
+        @keyframes introFade {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+                filter: blur(4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+                filter: blur(0);
+            }
+        }
+
+        .intro-btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 18px 50px;
+            background: transparent;
+            border: 1px solid var(--gold);
+            border-radius: 100px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.82rem;
+            font-weight: 500;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--gold);
+            cursor: pointer;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0;
+            animation: introFade 1.2s ease 1.6s forwards;
+            position: relative;
+            z-index: 20;
+        }
+
+        .intro-btn:hover {
+            color: var(--bg);
+            background: var(--gold);
+            box-shadow: 0 0 40px rgba(201, 168, 76, 0.3), 0 0 80px rgba(201, 168, 76, 0.1);
+            transform: translateY(-3px) scale(1.02);
+        }
+
+        .intro-btn:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .btn-wrap {
+            position: relative;
+            display: inline-block;
+            z-index: 20;
+        }
+
+        .pulse-ring {
+            position: absolute;
+            inset: -8px;
+            border: 1px solid var(--gold);
+            border-radius: 100px;
+            opacity: 0;
+            animation: pulseOut 2.5s ease-in-out infinite 2.5s;
+            pointer-events: none;
+        }
+
+        @keyframes pulseOut {
+            0% {
+                opacity: 0.5;
+                transform: scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: scale(1.15);
+            }
+        }
+
+        /* ===== PASSWORD MODAL ===== */
+        .pw-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 500;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .pw-overlay.show {
+            display: flex;
+        }
+
+        .pw-box {
+            background: linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 40px 32px;
+            max-width: 360px;
+            width: 100%;
+            text-align: center;
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+            transform: translateY(20px);
+            opacity: 0;
+            animation: pwIn 0.5s ease forwards;
+        }
+
+        @keyframes pwIn {
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .pw-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 20px;
+            border: 1.5px solid var(--gold);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pw-icon svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--gold);
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .pw-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+
+        .pw-desc {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+
+        .pw-input {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: var(--text);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1rem;
+            text-align: center;
+            letter-spacing: 6px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .pw-input:focus {
+            border-color: rgba(201, 168, 76, 0.5);
+        }
+
+        .pw-input::placeholder {
+            color: var(--text-muted);
+            letter-spacing: 2px;
+        }
+
+        .pw-error {
+            font-size: 0.75rem;
+            color: #ff6b6b;
+            margin-top: 10px;
+            min-height: 20px;
+            transition: opacity 0.3s;
+        }
+
+        .pw-submit {
+            width: 100%;
+            margin-top: 16px;
+            padding: 14px;
+            background: var(--gold);
+            border: none;
+            border-radius: 10px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--bg);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .pw-submit:hover {
+            background: var(--gold-light);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(201, 168, 76, 0.3);
+        }
+
+        .pw-submit:active {
+            transform: translateY(0);
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            20% {
+                transform: translateX(-8px);
+            }
+
+            40% {
+                transform: translateX(8px);
+            }
+
+            60% {
+                transform: translateX(-4px);
+            }
+
+            80% {
+                transform: translateX(4px);
+            }
+        }
+
+        /* ===== CARD ===== */
+        #scene-card {
+            overflow-y: auto;
+        }
+
+        .card {
+            background: linear-gradient(160deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.015) 100%);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 52px 40px;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            box-shadow: 0 30px 100px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+            transform: translateY(40px);
+            opacity: 0;
+            animation: cardIn 1s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s forwards;
+        }
+
+        @keyframes cardIn {
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent 10%, rgba(201, 168, 76, 0.3) 50%, transparent 90%);
+        }
+
+        /* Shimmer across card */
+        .card::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(from 0deg, transparent, rgba(201, 168, 76, 0.02), transparent, rgba(201, 168, 76, 0.02), transparent);
+            animation: cardShimmer 8s linear infinite;
+        }
+
+        @keyframes cardShimmer {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .card>* {
+            position: relative;
+            z-index: 2;
+        }
+
+        .card-tag {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.6rem;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin-bottom: 36px;
+            opacity: 0;
+            animation: itemIn 0.7s ease 0.4s forwards;
+        }
+
+        .card-greeting {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            font-weight: 400;
+            color: var(--text-sec);
+            margin-bottom: 4px;
+            opacity: 0;
+            animation: itemIn 0.7s ease 0.6s forwards;
+        }
+
+        .card-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 32px;
+            line-height: 1.2;
+            opacity: 0;
+            animation: itemIn 0.7s ease 0.8s forwards;
+        }
+
+        .card-message {
+            font-size: 0.9rem;
+            font-weight: 300;
+            color: var(--text-sec);
+            line-height: 2;
+            margin-bottom: 40px;
+            opacity: 0;
+            animation: itemIn 0.7s ease 1s forwards;
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .card-message a,
+        .card-link {
+            color: var(--gold);
+            text-decoration: none;
+            border-bottom: 1px solid rgba(201, 168, 76, 0.3);
+            transition: all 0.3s;
+            word-break: break-all;
+            display: inline;
+        }
+
+        .card-message a:hover,
+        .card-link:hover {
+            color: var(--gold-light);
+            border-bottom-color: var(--gold);
+        }
+
+        .card-divider {
+            width: 50px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--gold), transparent);
+            margin: 0 auto 32px;
+            opacity: 0;
+            animation: itemIn 0.7s ease 1.2s forwards;
+        }
+
+        .card-from-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            opacity: 0;
+            animation: itemIn 0.7s ease 1.3s forwards;
+        }
+
+        .card-from {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text);
+            opacity: 0;
+            animation: itemIn 0.7s ease 1.4s forwards;
+        }
+
+        @keyframes itemIn {
+            from {
+                opacity: 0;
+                transform: translateY(14px);
+                filter: blur(3px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+                filter: blur(0);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .intro-title {
+                font-size: 2rem;
+            }
+
+            .intro-sub {
+                font-size: 0.82rem;
+                margin-bottom: 40px;
+            }
+
+            .intro-btn {
+                padding: 15px 38px;
+                font-size: 0.75rem;
+            }
+
+            .card {
+                padding: 40px 24px;
+                border-radius: 16px;
+            }
+
+            .card-name {
+                font-size: 2.2rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="particleCanvas"></canvas>
+
+    <div class="bloom-layer" id="bloomLayer"></div>
+
+    <!-- Password Modal -->
+    <div class="pw-overlay" id="pwOverlay">
+        <div class="pw-box">
+            <div class="pw-icon">
+                <svg viewBox="0 0 24 24">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+            </div>
+            <div class="pw-title">Masukkan Password</div>
+            <div class="pw-desc">passwordnya ttl kamu</div>
+            <input type="password" class="pw-input" id="pwInput" placeholder="••••" autofocus>
+            <div class="pw-error" id="pwError"></div>
+            <button class="pw-submit" onclick="checkPassword()">Buka</button>
+        </div>
+    </div>
+
+    <!-- SCENE 1: Intro -->
+    <div class="scene" id="scene-intro">
+        <div class="intro-wrap">
+            <div class="intro-title">Ada Kejutan<br>Menjelang Ied</div>
+            <div class="intro-sub">Kepooo yaa...</div>
+            <div class="btn-wrap">
+                <button class="intro-btn" onclick="showPassword()">Buka Sekarang</button>
+                <div class="pulse-ring"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCENE 2: Card -->
+    <div class="scene hidden" id="scene-card">
+        <div class="card">
+            <div class="card-tag">Hari Raya Spesial</div>
+            <div class="card-greeting">Hallo,</div>
+            <div class="card-name">Rusyda</div>
+
+            <div class="card-message">
+                Selamat Hari Raya Idul Fitri.<br>
+                Mohon maaf lahir dan batin ya.<br><br>
+                Makasih udah selalu ada ya<br>
+                selalu sabar, dan selalu nemenin aku.<br><br>
+                Ini ada sedikit THR dari aku,<br>
+                klik ini 👉 <a href="https://app.u.shopeepay.co.id/u/dk2KuX6U7Vkj7p1zoU9Ca" target="_blank">Ambil THR Kamu</a><br>
+                terima ya jangan ditolak.
+
+            </div>
+
+            <div class="card-divider"></div>
+            <div class="card-from-label">dari</div>
+            <div class="card-from">Cowoknya Rusyda</div>
+        </div>
+    </div>
+
+    <script>
+        // ========================================
+        //  PARTICLE SYSTEM (Canvas)
+        // ========================================
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        let W, H;
+        let particles = [];
+        let mouse = { x: -1000, y: -1000 };
+
+        function resize() {
+            W = canvas.width = window.innerWidth;
+            H = canvas.height = window.innerHeight;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        document.addEventListener('mousemove', e => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        class Particle {
+            constructor(x, y, opts = {}) {
+                this.x = x || Math.random() * W;
+                this.y = y || Math.random() * H;
+                this.size = opts.size || (0.5 + Math.random() * 1.5);
+                this.speedX = opts.speedX || (Math.random() - 0.5) * 0.3;
+                this.speedY = opts.speedY || (Math.random() - 0.5) * 0.3;
+                this.opacity = 0;
+                this.targetOpacity = opts.opacity || (0.2 + Math.random() * 0.4);
+                this.life = opts.life || Infinity;
+                this.age = 0;
+                this.color = opts.color || (Math.random() > 0.6 ? '#c9a84c' : (Math.random() > 0.5 ? '#ffb6c1' : '#ffffff'));
+                this.fadeIn = true;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.age++;
+
+                // Fade in
+                if (this.fadeIn && this.opacity < this.targetOpacity) {
+                    this.opacity += 0.005;
+                    if (this.opacity >= this.targetOpacity) this.fadeIn = false;
+                }
+
+                // Fade out if has life limit
+                if (this.life !== Infinity && this.age > this.life * 0.7) {
+                    this.opacity -= 0.008;
+                }
+
+                // Mouse interaction — gentle push
+                const dx = this.x - mouse.x;
+                const dy = this.y - mouse.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 120) {
+                    const force = (120 - dist) / 120 * 0.3;
+                    this.speedX += (dx / dist) * force;
+                    this.speedY += (dy / dist) * force;
+                }
+
+                // Damping
+                this.speedX *= 0.99;
+                this.speedY *= 0.99;
+
+                // Wrap
+                if (this.x < -10) this.x = W + 10;
+                if (this.x > W + 10) this.x = -10;
+                if (this.y < -10) this.y = H + 10;
+                if (this.y > H + 10) this.y = -10;
+
+                return this.opacity > 0 || this.fadeIn;
+            }
+
+            draw() {
+                if (this.opacity <= 0) return;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = Math.max(0, this.opacity);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // Init background particles
+        for (let i = 0; i < 60; i++) {
+            particles.push(new Particle());
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, W, H);
+            particles = particles.filter(p => p.update());
+            particles.forEach(p => p.draw());
+
+            // Draw connections between nearby particles
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 100) {
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.strokeStyle = 'rgba(201, 168, 76, ' + (0.04 * (1 - dist / 100)) + ')';
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // ========================================
+        //  BLOOMING FLOWERS
+        // ========================================
+        const PALETTES = [
+            { petals: ['#ffb6c1', '#ff91a4'], glow: 'rgba(255,182,193,0.15)' },
+            { petals: ['#f8c8dc', '#f09ac0'], glow: 'rgba(248,200,220,0.15)' },
+            { petals: ['#dda0dd', '#c77dc7'], glow: 'rgba(221,160,221,0.15)' },
+            { petals: ['#ffccd5', '#ff8fab'], glow: 'rgba(255,204,213,0.15)' },
+            { petals: ['#e8b4b8', '#d4919a'], glow: 'rgba(232,180,184,0.15)' },
+            { petals: ['#f0d5e0', '#e0b0c0'], glow: 'rgba(240,213,224,0.15)' },
+            { petals: ['#c9b1d0', '#b090c0'], glow: 'rgba(201,177,208,0.15)' },
+        ];
+
+        function createFlower(x, y, size, delay) {
+            const layer = document.getElementById('bloomLayer');
+            const palette = PALETTES[Math.floor(Math.random() * PALETTES.length)];
+            const flower = document.createElement('div');
+            flower.className = 'flower';
+            flower.style.left = x + '%';
+            flower.style.top = y + '%';
+            flower.style.width = flower.style.height = (size * 6) + 'px';
+            flower.style.marginLeft = flower.style.marginTop = -(size * 3) + 'px';
+
+            // Glow
+            const glow = document.createElement('div');
+            glow.className = 'flower-glow';
+            glow.style.width = glow.style.height = (size * 8) + 'px';
+            glow.style.background = `radial-gradient(circle, ${palette.glow}, transparent 70%)`;
+            flower.appendChild(glow);
+
+            // Outer petal ring
+            const ring1 = document.createElement('div');
+            ring1.className = 'petal-ring';
+            const count1 = 6 + Math.floor(Math.random() * 3);
+            for (let i = 0; i < count1; i++) {
+                const p = document.createElement('div');
+                p.className = 'petal';
+                const angle = (360 / count1) * i;
+                p.style.width = (size * 1.1) + 'px';
+                p.style.height = (size * 1.8) + 'px';
+                p.style.background = `linear-gradient(135deg, ${palette.petals[0]}, ${palette.petals[1]})`;
+                p.style.setProperty('--a', angle + 'deg');
+                p.style.setProperty('--d', (size * 0.3) + 'px');
+                p.style.setProperty('--po', '0.75');
+                p.style.animationDelay = (delay + 0.15 + i * 0.06) + 's';
+                p.style.boxShadow = `inset 0 0 ${size * 0.3}px rgba(255,255,255,0.2)`;
+                ring1.appendChild(p);
+            }
+            flower.appendChild(ring1);
+
+            // Inner petal ring (smaller, brighter)
+            const ring2 = document.createElement('div');
+            ring2.className = 'petal-ring-inner';
+            const count2 = 5 + Math.floor(Math.random() * 2);
+            for (let i = 0; i < count2; i++) {
+                const p = document.createElement('div');
+                p.className = 'petal';
+                const angle = (360 / count2) * i + 15;
+                p.style.width = (size * 0.7) + 'px';
+                p.style.height = (size * 1.2) + 'px';
+                p.style.background = `linear-gradient(135deg, ${palette.petals[0]}ee, ${palette.petals[1]}cc)`;
+                p.style.setProperty('--a', angle + 'deg');
+                p.style.setProperty('--d', (size * 0.15) + 'px');
+                p.style.setProperty('--po', '0.9');
+                p.style.animationDelay = (delay + 0.6 + i * 0.05) + 's';
+                p.style.boxShadow = `inset 0 0 ${size * 0.2}px rgba(255,255,255,0.35)`;
+                ring2.appendChild(p);
+            }
+            flower.appendChild(ring2);
+
+            // Center
+            const center = document.createElement('div');
+            center.className = 'flower-center';
+            center.style.width = center.style.height = (size * 0.5) + 'px';
+            center.style.animationDelay = (delay + 0.9) + 's';
+            flower.appendChild(center);
+
+            layer.appendChild(flower);
+
+            // Trigger bloom
+            setTimeout(() => {
+                flower.classList.add('blooming');
+                // Emit sparkles from bloom point
+                emitSparkles(x, y, palette.petals[0], size);
+            }, delay * 1000);
+        }
+
+        function emitSparkles(xPct, yPct, color, size) {
+            const cx = (xPct / 100) * W;
+            const cy = (yPct / 100) * H;
+            for (let i = 0; i < 6; i++) {
+                setTimeout(() => {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 0.5 + Math.random() * 1;
+                    particles.push(new Particle(cx, cy, {
+                        size: 1 + Math.random() * 1.5,
+                        speedX: Math.cos(angle) * speed,
+                        speedY: Math.sin(angle) * speed,
+                        opacity: 0.6,
+                        life: 80 + Math.random() * 60,
+                        color: color
+                    }));
+                }, i * 100);
+            }
+        }
+
+        // Flower positions — staggered blooming
+        const FLOWERS = [
+            { x: 7, y: 10, s: 11, d: 0.3 },
+            { x: 90, y: 8, s: 13, d: 0.6 },
+            { x: 4, y: 70, s: 10, d: 1.0 },
+            { x: 93, y: 75, s: 12, d: 0.8 },
+            { x: 16, y: 38, s: 9, d: 1.4 },
+            { x: 84, y: 32, s: 11, d: 1.1 },
+            { x: 48, y: 4, s: 8, d: 0.5 },
+            { x: 42, y: 92, s: 10, d: 1.8 },
+            { x: 22, y: 18, s: 8, d: 2.0 },
+            { x: 76, y: 15, s: 10, d: 1.6 },
+            { x: 26, y: 62, s: 9, d: 2.2 },
+            { x: 80, y: 58, s: 11, d: 2.4 },
+            { x: 12, y: 52, s: 7, d: 2.8 },
+            { x: 91, y: 48, s: 8, d: 2.6 },
+            { x: 36, y: 12, s: 7, d: 3.0 },
+            { x: 68, y: 88, s: 8, d: 3.2 },
+            { x: 30, y: 82, s: 7, d: 3.5 },
+            { x: 72, y: 8, s: 7, d: 3.8 },
+            { x: 55, y: 10, s: 6, d: 4.0 },
+            { x: 10, y: 88, s: 7, d: 4.2 },
+            { x: 85, y: 90, s: 6, d: 4.5 },
+            { x: 62, y: 78, s: 6, d: 4.8 },
+        ];
+
+        FLOWERS.forEach(f => createFlower(f.x, f.y, f.s, f.d));
+
+        // ========================================
+        //  CONFETTI BURST
+        // ========================================
+        function burstConfetti() {
+            const colors = ['#c9a84c', '#e4c86a', '#f0ede6', '#ffb6c1', '#dda0dd', '#d4b85c'];
+            // Particle-based confetti
+            for (let i = 0; i < 100; i++) {
+                setTimeout(() => {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 1 + Math.random() * 3;
+                    particles.push(new Particle(W / 2 + (Math.random() - 0.5) * W * 0.8, -10, {
+                        size: 1.5 + Math.random() * 2.5,
+                        speedX: Math.cos(angle) * speed * 0.3,
+                        speedY: 1 + Math.random() * 2,
+                        opacity: 0.7 + Math.random() * 0.3,
+                        life: 120 + Math.random() * 80,
+                        color: colors[Math.floor(Math.random() * colors.length)]
+                    }));
+                }, i * 20);
+            }
+        }
+
+        // ========================================
+        //  PASSWORD & REVEAL
+        // ========================================
+        // GANTI PASSWORD DI SINI:
+        const SECRET_PASSWORD = '190904';
+
+        function showPassword() {
+            document.getElementById('pwOverlay').classList.add('show');
+            setTimeout(() => document.getElementById('pwInput').focus(), 300);
+        }
+
+        function checkPassword() {
+            const input = document.getElementById('pwInput').value.trim().toLowerCase();
+            if (input === SECRET_PASSWORD) {
+                document.getElementById('pwOverlay').classList.remove('show');
+                revealCard();
+            } else {
+                document.getElementById('pwError').textContent = 'Password salah, coba lagi ya~';
+                document.getElementById('pwInput').value = '';
+                document.getElementById('pwInput').focus();
+                // Shake animation
+                const box = document.querySelector('.pw-box');
+                box.style.animation = 'none';
+                box.offsetHeight; // force reflow
+                box.style.animation = 'shake 0.4s ease';
+            }
+        }
+
+        // Enter key support
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && document.getElementById('pwOverlay').classList.contains('show')) {
+                checkPassword();
+            }
+        });
+
+        function revealCard() {
+            document.getElementById('scene-intro').classList.add('hidden');
+
+            setTimeout(() => {
+                document.getElementById('scene-card').classList.remove('hidden');
+                burstConfetti();
+
+                // Extra bloom bursts around card
+                const extras = [
+                    { x: 8, y: 20, s: 10, d: 0.2 },
+                    { x: 92, y: 25, s: 9, d: 0.4 },
+                    { x: 5, y: 55, s: 8, d: 0.6 },
+                    { x: 95, y: 60, s: 8, d: 0.8 },
+                    { x: 12, y: 80, s: 9, d: 1.0 },
+                    { x: 88, y: 82, s: 10, d: 1.2 },
+                ];
+                extras.forEach(f => createFlower(f.x, f.y, f.s, f.d));
+            }, 600);
+        }
+    </script>
+</body>
+
+</html>
